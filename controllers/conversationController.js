@@ -1,9 +1,16 @@
-exports.testRoute = (req, res) => {
+const User = require('../models/userModel');
+
+exports.testRoute = async (req, res) => {
  try{
+    // console.log(JSON.stringify(req.user))
+    console.log(req.user._id)
+    console.log(`ùser: ${req.user}`)
+    // const currentUser = await User.findById(req.user._id);
+    // console.log(currentUser)
     res.status(200).json({
         status: 'sucess',
         data: {
-            message: 'test router'
+            user: req.user
         }
     })
  } catch (err) {
