@@ -1,6 +1,30 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+const chatMessageSchema = new mongoose.Schema({
+  message: {
+    type: String,
+    required: true,
+  },
+  sender: {
+    type: String,
+    required: true,
+    enum: ['user', 'chatbot'],
+  },
+  timestamp: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+const chatSchema = new mongoose.Schema({
+  messages: [chatMessageSchema],
+  createdAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -28,6 +52,7 @@ const userSchema = new mongoose.Schema({
       message: 'Passwords are not the same',
     },
   },
+  chats: [chatSchema],
 });
 
 userSchema.pre('save', async function (next) {
