@@ -9,7 +9,7 @@ const chatMessageSchema = new mongoose.Schema({
   sender: {
     type: String,
     required: true,
-    enum: ['user', 'chatbot'],
+    enum: ['user', 'assistant'],
   },
   timestamp: {
     type: Date,
