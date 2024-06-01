@@ -36,31 +36,56 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
     return user.chats.id(chatId);
   };
 
+  const getApiResponse = async(messages) =>  {
+    const completion = await openai.chat.completions.create({
+        messages: messages,
+        model: 'gpt-3.5-turbo',
+      });
+  
+      return completion.choices[0].message.content;
+  }
+
+  const getChatContext = async (userId, chatId) => {
+    try {
+      const user = await User.findById(userId).select('chats');
+      if (!user) throw new Error('User not found');
+  
+      const chat = user.chats.id(chatId);
+      if (!chat) throw new Error('Chat not found');
+  
+      const messages = chat.messages.map(msg => ({
+        role: msg.sender,
+        content: msg.message,
+      }));
+
+      console.log(messages);
+  
+      return messages;
+    } catch (err) {
+      throw new Error(`Error getting chat context: ${err.message}`);
+    }
+  };
+
   exports.makeQuestion = async (req, res) => {
     try {
       const userId = req.user._id;
       const userQuestion = req.body.question;
       const currentChatId = req.cookies ? req.cookies.currentChatId : null;
   
-      const completion = await openai.chat.completions.create({
-        messages: [{ role: 'user', content: userQuestion }],
-        model: 'gpt-3.5-turbo',
-      });
-  
-      const chatResponse = completion.choices[0].message.content;
-  
       let chat;
-
-      console.log(currentChatId);
+      let chatResponse;
   
       if (!currentChatId) {
         // Criar um novo chat se o cookie não existir
+        chatResponse = await getApiResponse(userQuestion);
         chat = await createNewChat(userId, userQuestion, chatResponse);
         res.cookie('currentChatId', chat._id, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
   
       } else {
         // Adicionar resposta do chatbot ao chat existente
-        console.log('atualizando chat')
+        const messages = await getChatContext(userId, currentChatId);
+        chatResponse = await getApiResponse(messages);
+
         chat = await updateCurrentChat(userId, currentChatId, userQuestion, chatResponse);
       }
   
