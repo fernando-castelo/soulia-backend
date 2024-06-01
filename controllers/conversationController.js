@@ -42,7 +42,7 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
         model: 'gpt-3.5-turbo',
       });
   
-      return completion.choices[0].message.content;
+      return completion.choices[0].message;
   }
 
   const getChatContext = async (userId, chatId) => {
@@ -71,28 +71,32 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
       const userId = req.user._id;
       const userQuestion = req.body.question;
       const currentChatId = req.cookies ? req.cookies.currentChatId : null;
+    
+      console.log(currentChatId)
   
       let chat;
       let chatResponse;
   
       if (!currentChatId) {
+        console.log(userQuestion);
         // Criar um novo chat se o cookie não existir
-        chatResponse = await getApiResponse(userQuestion);
-        chat = await createNewChat(userId, userQuestion, chatResponse);
-        res.cookie('currentChatId', chat._id, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
+        chatResponse = await getApiResponse([{ content: userQuestion, role: 'user' }]);
+        console.log(chatResponse)
+        chat = await createNewChat(userId, userQuestion, chatResponse.content);
+        res.cookie('currentChatId', chat._id, { maxAge: 7 * 24 * 60 * 60 * 1000});
   
       } else {
         // Adicionar resposta do chatbot ao chat existente
         const messages = await getChatContext(userId, currentChatId);
         chatResponse = await getApiResponse(messages);
-
-        chat = await updateCurrentChat(userId, currentChatId, userQuestion, chatResponse);
+        chat = await updateCurrentChat(userId, currentChatId, userQuestion, chatResponse.content);
       }
   
       res.status(200).json({
         status: 'success',
         data: {
-          answer: chatResponse,
+          answer: chatResponse.content,
+          sender: chatResponse.role
         },
       });
     } catch (err) {
