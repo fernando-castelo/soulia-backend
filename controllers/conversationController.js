@@ -71,8 +71,6 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
       const userId = req.user._id;
       const userQuestion = req.body.question;
       const currentChatId = req.cookies ? req.cookies.currentChatId : null;
-    
-      console.log(currentChatId)
   
       let chat;
       let chatResponse;
@@ -83,7 +81,7 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
         chatResponse = await getApiResponse([{ content: userQuestion, role: 'user' }]);
         console.log(chatResponse)
         chat = await createNewChat(userId, userQuestion, chatResponse.content);
-        res.cookie('currentChatId', chat._id, { maxAge: 7 * 24 * 60 * 60 * 1000});
+        res.cookie('currentChatId', chat._id, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
   
       } else {
         // Adicionar resposta do chatbot ao chat existente
