@@ -1,16 +1,14 @@
-const dotenv = require('dotenv');
-const { OpenAI } = require('openai');
+
 const User = require('../models/userModel');
+const openai = require('../openai')
 
-dotenv.config({ path: './config.env' });
-
-const openai = new OpenAI({ apiKey: process.env.OPEN_API_KEY });
-
-const createNewChat = async (userId, initialMessage) => {
+const createNewChat = async (userId, initialMessage, chatResponse) => {
     const newChat = {
-      messages: [{ message: initialMessage, sender: 'user' }],
+      messages: [{ message: initialMessage, sender: 'user' },
+                 { message: chatResponse, sender: 'assistant'}
+      ],
     };
-  
+
     const user = await User.findByIdAndUpdate(
       userId,
       { $push: { chats: newChat } },
@@ -22,11 +20,14 @@ const createNewChat = async (userId, initialMessage) => {
     return user.chats[user.chats.length - 1];
   };
 
-  const updateCurrentChat = async (userId, chatId, newMessage) => {
+  const updateCurrentChat = async (userId, chatId, userQuestion, chatResponse) => {
+
+    const messages = [{ message: userQuestion, sender: 'user' },
+                      { message: chatResponse, sender: 'assistant'}]  
 
     const user = await User.findOneAndUpdate(
       { _id: userId, 'chats._id': chatId },
-      { $push: { 'chats.$.messages': newMessage } },
+      { $push: { 'chats.$.messages': messages } },
       { new: true }
     );
   
@@ -41,30 +42,26 @@ const createNewChat = async (userId, initialMessage) => {
       const userQuestion = req.body.question;
       const currentChatId = req.cookies ? req.cookies.currentChatId : null;
   
-      console.log(userQuestion);
-  
       const completion = await openai.chat.completions.create({
         messages: [{ role: 'user', content: userQuestion }],
         model: 'gpt-3.5-turbo',
       });
   
-      const chatResponse = completion.choices[0].message;
-  
-      console.log(chatResponse);
+      const chatResponse = completion.choices[0].message.content;
   
       let chat;
+
+      console.log(currentChatId);
   
       if (!currentChatId) {
         // Criar um novo chat se o cookie não existir
-        chat = await createNewChat(userId, userQuestion);
+        chat = await createNewChat(userId, userQuestion, chatResponse);
         res.cookie('currentChatId', chat._id, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
   
       } else {
         // Adicionar resposta do chatbot ao chat existente
-        chat = await updateCurrentChat(userId, currentChatId, {
-          message: chatResponse.content,
-          sender: chatResponse.role,
-        });
+        console.log('atualizando chat')
+        chat = await updateCurrentChat(userId, currentChatId, userQuestion, chatResponse);
       }
   
       res.status(200).json({
@@ -80,6 +77,7 @@ const createNewChat = async (userId, initialMessage) => {
       });
     }
   };
+
 exports.testRoute = async (req, res) => {
   try {
     res.status(200).json({

@@ -1,7 +1,6 @@
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
 const app = require('./app');
-const cookieParser = require('cookie-parser');
 
 dotenv.config({ path: './config.env' });
 
@@ -13,8 +12,6 @@ const DB = process.env.DATABASE.replace(
 mongoose.connect(DB).then((con) => {
   console.log('DB connection sucessful!');
 });
-
-app.use(cookieParser());
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
