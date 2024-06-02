@@ -70,30 +70,35 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
       const userId = req.user._id;
       const userQuestion = req.body.question;
       const currentChatId = req.cookies ? req.cookies.currentChatId : null;
-      const currentBoardId = req.cookies ? req.cookies.currentBoardId : null;
+      let currentBoardId = req.cookies ? req.cookies.currentBoardId : null;
       let chat;
       let chatResponse;
 
       if(!currentBoardId) {
-        const mondayChatId = await mondayService.createMondayChat(req, res);
-        const collumns = await mondayService.createMondayChatColumns(mondayChatId);
+        currentBoardId = await mondayService.createMondayChat(req, res);
+        const senderColumnId = await mondayService.addColumn(currentBoardId, 'Sender', 'text');
+        const messageColumnId = await mondayService.addColumn(currentBoardId, 'Message', 'text');
 
-        res.cookie('currentBoardId', mondayChatId, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
+        res.cookie('currentBoardId', currentBoardId, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
       }
   
       if (!currentChatId) {
-        console.log(userQuestion);
-        // Criar um novo chat se o cookie não existir
+       // Criar um novo chat se o cookie não existir
+        mondayService.fillMondayColumns('user', userQuestion, currentBoardId);
         chatResponse = await getApiResponse([{ content: userQuestion, role: 'user' }]);
         chat = await createNewChat(userId, userQuestion, chatResponse.content);
+        mondayService.fillMondayColumns('assistant', chatResponse.content, currentBoardId );
+    
         res.cookie('currentChatId', chat._id, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
   
       } else {
         // Adicionar resposta do chatbot ao chat existente
+        mondayService.fillMondayColumns('user', userQuestion, currentBoardId );
         const messages = await getChatContext(userId, currentChatId);
         messages.push({content: userQuestion, role: 'user'});
         chatResponse = await getApiResponse(messages);
         chat = await updateCurrentChat(userId, currentChatId, userQuestion, chatResponse.content);
+        mondayService.fillMondayColumns('assistant', chatResponse.content, currentBoardId);
       }
   
       res.status(200).json({

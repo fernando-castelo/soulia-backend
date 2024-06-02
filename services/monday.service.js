@@ -27,44 +27,98 @@ exports.createMondayChat = async () => {
     }
 };
 
-exports.createMondayChatColumns = async (boardId) => {
+exports.addColumn = async (boardId, title, columnType) => {
+    const query = `
+    mutation {
+      create_column (board_id: ${boardId}, title: "${title}", column_type: ${columnType}) {
+        id
+      }
+    }`;
+    const response = await fetch("https://api.monday.com/v2", {
+        method: 'post',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': process.env.MONDAY_KEY
+        },
+        body: JSON.stringify({ query })
+    });
+    const data = await response.json();
+    return data.data.create_column.id;
+},
+
+exports.createItem = async(query) => {
+    fetch ("https://api.monday.com/v2", {
+    method: 'post',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization' : process.env.MONDAY_KEY
+    },
+    body: JSON.stringify({
+        query : query
+    })
+    })
+    .then(res => res.json())
+    .then(res => console.log(JSON.stringify(res, null, 2)));
+}
+
+exports.getMondayChatItemQuery = async(sender, message, board_id) => {
+    return `mutation {
+      create_item (
+        board_id: ${board_id}, 
+        item_name: "Message", 
+        column_values: \"{\\\"sender__1\\\":\\\"${sender}\\\", \\\"message__1\\\":\\\"${message}\\\"}\"
+      ) { 
+        id 
+      }
+    }`;
+}
+
+exports.getMondaySenderQuery = async(sender, board_id) => {
+    return `mutation { create_item (board_id: ${board_id}, item_name: \"Message\", column_values: \"{\\\"sender__1\\\":\\\"${sender}\\\"}\") { id }}`;
+}
+
+exports.getMondayMessageQuery = async(message, board_id) => {
+    return `mutation { create_item (board_id: ${board_id}, item_name: \"Message\", column_values: \"{\\\"message__1\\\":\\\"${message}\\\"}\") { id }}`;
+}
+
+exports.fillMondayColumns = async (sender, message, board_id) => {
+
+    const senderColumnId = 'sender__1';
+    const messageColumnId = 'message__1';
+
+
+    const escapedMessage = message.replace(/\n/g, "\\n");
+    const columnValues = JSON.stringify({
+        [senderColumnId]: sender,
+        [messageColumnId]: escapedMessage
+    }).replace(/"/g, '\\"');
+
+    const query = `
+    mutation {
+      create_item (
+        board_id: ${board_id}, 
+        item_name: "Message", 
+        column_values: "${columnValues}"
+      ) { 
+        id 
+      }
+    }`;
 
     try {
-        let addColumnsQuery = `
-        mutation {
-          create_column (board_id: ${boardId}, title: "Message", column_type: text) {
-            id
-          }
-        }`;
-
-        let addColumnsResponse = await fetch("https://api.monday.com/v2", {
+        const response = await fetch("https://api.monday.com/v2", {
             method: 'post',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': process.env.MONDAY_KEY
             },
-            body: JSON.stringify({ query: addColumnsQuery })
+            body: JSON.stringify({ query })
         });
 
-        addColumnsQuery = `  mutation {
-            create_column (board_id: ${boardId}, title: "Sender", column_type: text) {
-              id
-            }
-          }`;
-
-        addColumnsResponse = await fetch("https://api.monday.com/v2", {
-            method: 'post',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': process.env.MONDAY_KEY
-            },
-            body: JSON.stringify({ query: addColumnsQuery })
-        });
-
-        const addColumnsData = await addColumnsResponse.json();
-
-        return addColumnsData;
+        const data = await response.json();
+        console.log(JSON.stringify(data, null, 2));
+        return data;
     } catch (error) {
-        throw new Error(`Error getting chat context: ${err.message}`);
+        console.error("Error:", error);
+        throw error;
     }
-}
+};
