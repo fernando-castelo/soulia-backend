@@ -70,11 +70,16 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
       const userId = req.user._id;
       const userQuestion = req.body.question;
       const currentChatId = req.cookies ? req.cookies.currentChatId : null;
+      const currentBoardId = req.cookies ? req.cookies.currentBoardId : null;
       let chat;
       let chatResponse;
 
-      const mondayChatId = await mondayService.createMondayChat(req, res);
-      const collumns = await mondayService.createMondayChatColumns(mondayChatId);
+      if(!currentBoardId) {
+        const mondayChatId = await mondayService.createMondayChat(req, res);
+        const collumns = await mondayService.createMondayChatColumns(mondayChatId);
+
+        res.cookie('currentBoardId', mondayChatId, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
+      }
   
       if (!currentChatId) {
         console.log(userQuestion);
