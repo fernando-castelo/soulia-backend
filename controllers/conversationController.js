@@ -91,6 +91,7 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
       } else {
         // Adicionar resposta do chatbot ao chat existente
         const messages = await getChatContext(userId, currentChatId);
+        messages.push({content: userQuestion, role: 'user'});
         chatResponse = await getApiResponse(messages);
         chat = await updateCurrentChat(userId, currentChatId, userQuestion, chatResponse.content);
       }
