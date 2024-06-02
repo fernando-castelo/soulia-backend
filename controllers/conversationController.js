@@ -1,6 +1,7 @@
 
 const User = require('../models/userModel');
 const openai = require('../openai')
+const mondayService = require('../services/monday.service');
 
 const createNewChat = async (userId, initialMessage, chatResponse) => {
     const newChat = {
@@ -57,8 +58,6 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
         role: msg.sender,
         content: msg.message,
       }));
-
-      console.log(messages);
   
       return messages;
     } catch (err) {
@@ -71,15 +70,16 @@ const createNewChat = async (userId, initialMessage, chatResponse) => {
       const userId = req.user._id;
       const userQuestion = req.body.question;
       const currentChatId = req.cookies ? req.cookies.currentChatId : null;
-  
       let chat;
       let chatResponse;
+
+      const mondayChatId = await mondayService.createMondayChat(req, res);
+      const collumns = await mondayService.createMondayChatColumns(mondayChatId);
   
       if (!currentChatId) {
         console.log(userQuestion);
         // Criar um novo chat se o cookie não existir
         chatResponse = await getApiResponse([{ content: userQuestion, role: 'user' }]);
-        console.log(chatResponse)
         chat = await createNewChat(userId, userQuestion, chatResponse.content);
         res.cookie('currentChatId', chat._id, { maxAge: 7 * 24 * 60 * 60 * 1000, httpOnly: true });
   
